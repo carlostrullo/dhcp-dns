@@ -104,3 +104,4 @@
     name: dhcpd
     state: started
     enabled: true
+  when: not ansible_check_mode
