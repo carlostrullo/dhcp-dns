@@ -1,0 +1,49 @@
+---
+dns_bind_packages:
+  - bind
+  - bind-utils
+
+dns_domain: "carredondot.local"
+dns_server_hostname: "ns1"
+dns_server_ip: "192.168.56.254"
+
+dns_ns_fqdn: "{{ dns_server_hostname }}.{{ dns_domain }}"
+dns_admin_email: "hostmaster@{{ dns_domain }}"
+
+dns_named_directory: "/var/named"
+dns_forward_zone_file: "{{ dns_domain }}.zone"
+dns_reverse_zone: "56.168.192.in-addr.arpa"
+dns_reverse_zone_file: "{{ dns_reverse_zone }}.zone"
+
+dns_zone_serial: "2026022601"
+dns_zone_ttl: "1h"
+dns_refresh: "1h"
+dns_retry: "15m"
+dns_expire: "1w"
+dns_minimum: "1d"
+
+dns_listen_on:
+  - "127.0.0.1"
+  - "{{ dns_server_ip }}"
+dns_allow_query:
+  - "127.0.0.1"
+  - "192.168.56.0/24"
+
+dns_recursion: true
+dns_forwarders:
+  - "8.8.8.8"
+  - "8.8.4.4"
+dns_forward_only: true
+
+dns_a_records:
+  - name: "gw"
+    ip: "192.168.56.1"
+
+dns_ptr_records:
+  - ip: "{{ dns_server_ip }}"
+    fqdn: "{{ dns_ns_fqdn }}."
+  - ip: "192.168.56.1"
+    fqdn: "gw.{{ dns_domain }}."
+
+firewalld_manage: true
+firewalld_install: true

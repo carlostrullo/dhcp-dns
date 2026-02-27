@@ -1,0 +1,15 @@
+$TTL {{ dns_zone_ttl }}
+@   IN SOA {{ dns_ns_fqdn }}. {{ (dns_admin_email | replace('@', '.')) }}. (
+        {{ dns_zone_serial }} ; serial (YYYYMMDDnn)
+        {{ dns_refresh }}     ; refresh
+        {{ dns_retry }}       ; retry
+        {{ dns_expire }}      ; expire
+        {{ dns_minimum }}     ; minimum
+)
+
+    IN NS  {{ dns_ns_fqdn }}.
+
+; PTR records (explicit list)
+{% for rec in dns_ptr_records %}
+{{ rec.ip.split('.')[-1] }}  IN PTR  {{ rec.fqdn }}
+{% endfor %}

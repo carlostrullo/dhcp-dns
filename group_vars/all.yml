@@ -1,0 +1,77 @@
+# Firewalld (si está disponible)
+firewalld_manage: true
+firewalld_install: true
+
+# =========================
+# DNS (BIND/named)
+# =========================
+dns_domain: "carredondot.local"
+dns_server_hostname: "ns1"          # EJEMPLO: cambia si quieres (dns1/rocky9/etc)
+dns_server_ip: "192.168.56.254"
+
+dns_zone_serial: "2026022601"       # YYYYMMDDnn
+dns_zone_ttl: "1h"
+
+# Reverse zone para 192.168.56.0/24
+dns_reverse_zone: "56.168.192.in-addr.arpa"
+
+# BIND options
+dns_listen_on:
+  - "127.0.0.1"
+  - "192.168.56.254"
+
+dns_allow_query:
+  - "127.0.0.1"
+  - "192.168.56.0/24"
+
+# Pediste forwarders (Google) => típicamente necesitas recursion
+dns_recursion: true                 # EJEMPLO (recomendado)
+dns_forwarders:
+  - "8.8.8.8"
+  - "8.8.4.4"
+dns_forward_only: true              # EJEMPLO
+
+# Registros A de ejemplo (NO dentro del rango DHCP para evitar confusiones)
+dns_a_records:
+  - name: "gw"
+    ip: "192.168.56.1"
+  - name: "host1"
+    ip: "192.168.56.10"
+  - name: "host2"
+    ip: "192.168.56.11"
+
+dns_ptr_records:
+  - ip: "192.168.56.254"
+    fqdn: "ns1.carredondot.local."
+  - ip: "192.168.56.1"
+    fqdn: "gw.carredondot.local."
+  - ip: "192.168.56.10"
+    fqdn: "host1.carredondot.local."
+  - ip: "192.168.56.11"
+    fqdn: "host2.carredondot.local."
+
+# =========================
+# DHCP (isc-dhcp-server)
+# =========================
+dhcp_domain_name: "carredondot.local"
+dhcp_dns_servers:
+  - "192.168.56.254"
+
+dhcp_default_lease_time: 3600
+dhcp_max_lease_time: 7200
+
+# Interfaz(es) donde escuchará dhcpd (RHEL/Rocky: /etc/sysconfig/dhcpd -> DHCPDARGS)
+# Tú: eth1 (altname enp0s8). Si en tu host realmente se llama enp0s8, cámbialo aquí.
+dhcpd_interfaces:
+  - "eth1"
+
+dhcp_subnets:
+  - network: "192.168.56.0"
+    netmask: "255.255.255.0"
+    range_start: "192.168.56.100"
+    range_end: "192.168.56.110"
+    routers: "192.168.56.1"
+    broadcast: "192.168.56.255"
+
+# Reservas por MAC: no requeridas
+dhcp_reservations: []

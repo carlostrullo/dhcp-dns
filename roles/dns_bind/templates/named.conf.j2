@@ -1,0 +1,39 @@
+// Managed by Ansible - DO NOT EDIT
+options {
+    listen-on port 53 { {{ dns_listen_on | join('; ') }}; };
+    listen-on-v6 { none; };
+
+    directory "{{ dns_named_directory }}";
+
+    allow-query { {{ dns_allow_query | join('; ') }}; };
+
+    recursion {{ 'yes' if (dns_recursion | bool) else 'no' }};
+
+{% if dns_forwarders is defined and (dns_forwarders | length) > 0 %}
+    forwarders { {{ dns_forwarders | join('; ') }}; };
+{% if dns_forward_only | bool %}
+    forward only;
+{% endif %}
+{% endif %}
+
+    dnssec-validation auto;
+
+    managed-keys-directory "/var/named/dynamic";
+    pid-file "/run/named/named.pid";
+    session-keyfile "/run/named/session.key";
+};
+
+zone "{{ dns_domain }}" IN {
+    type master;
+    file "{{ dns_forward_zone_file }}";
+    allow-update { none; };
+};
+
+zone "{{ dns_reverse_zone }}" IN {
+    type master;
+    file "{{ dns_reverse_zone_file }}";
+    allow-update { none; };
+};
+
+include "/etc/named.rfc1912.zones";
+include "/etc/named.root.key";

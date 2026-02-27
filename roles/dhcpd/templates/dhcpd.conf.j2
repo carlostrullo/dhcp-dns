@@ -1,0 +1,33 @@
+# Managed by Ansible - DO NOT EDIT
+authoritative;
+
+ddns-update-style none;
+
+option domain-name "{{ dhcp_domain_name }}";
+option domain-name-servers {{ dhcp_dns_servers | join(', ') }};
+
+default-lease-time {{ dhcp_default_lease_time }};
+max-lease-time {{ dhcp_max_lease_time }};
+
+log-facility local7;
+
+{% for s in dhcp_subnets %}
+subnet {{ s.network }} netmask {{ s.netmask }} {
+  range {{ s.range_start }} {{ s.range_end }};
+  option routers {{ s.routers }};
+  option subnet-mask {{ s.netmask }};
+{% if s.broadcast is defined %}
+  option broadcast-address {{ s.broadcast }};
+{% endif %}
+}
+{% endfor %}
+
+{% if dhcp_reservations is defined and (dhcp_reservations | length) > 0 %}
+# Static reservations
+{% for h in dhcp_reservations %}
+host {{ h.name }} {
+  hardware ethernet {{ h.mac }};
+  fixed-address {{ h.ip }};
+}
+{% endfor %}
+{% endif %}

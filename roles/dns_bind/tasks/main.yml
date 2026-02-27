@@ -1,0 +1,116 @@
+---
+- name: Install BIND packages
+  ansible.builtin.package:
+    name: "{{ dns_bind_packages }}"
+    state: present
+
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Optionally install firewalld
+  ansible.builtin.package:
+    name: firewalld
+    state: present
+  when:
+    - firewalld_manage | bool
+    - firewalld_install | bool
+
+- name: Re-gather package facts after optional install
+  ansible.builtin.package_facts:
+    manager: auto
+  when:
+    - firewalld_manage | bool
+
+- name: Set firewalld_present fact
+  ansible.builtin.set_fact:
+    firewalld_present: "{{ 'firewalld' in (ansible_facts.packages | default({})) }}"
+  when:
+    - firewalld_manage | bool
+
+- name: Ensure firewalld is enabled and running (if present)
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+  when:
+    - firewalld_manage | bool
+    - firewalld_present | default(false)
+
+- name: Open firewall ports for DNS (53/tcp)
+  ansible.posix.firewalld:
+    port: "53/tcp"
+    permanent: true
+    immediate: true
+    state: enabled
+  when:
+    - firewalld_manage | bool
+    - firewalld_present | default(false)
+
+- name: Open firewall ports for DNS (53/udp)
+  ansible.posix.firewalld:
+    port: "53/udp"
+    permanent: true
+    immediate: true
+    state: enabled
+  when:
+    - firewalld_manage | bool
+    - firewalld_present | default(false)
+
+- name: Deploy named.conf
+  ansible.builtin.template:
+    src: named.conf.j2
+    dest: /etc/named.conf
+    owner: root
+    group: named
+    mode: "0640"
+  notify: restart named
+
+- name: Deploy forward zone file
+  ansible.builtin.template:
+    src: zone.forward.j2
+    dest: "{{ dns_named_directory }}/{{ dns_forward_zone_file }}"
+    owner: root
+    group: named
+    mode: "0640"
+  notify: reload named
+
+- name: Deploy reverse zone file
+  ansible.builtin.template:
+    src: zone.reverse.j2
+    dest: "{{ dns_named_directory }}/{{ dns_reverse_zone_file }}"
+    owner: root
+    group: named
+    mode: "0640"
+  notify: reload named
+
+- name: Validate named.conf (named-checkconf)
+  ansible.builtin.command: "named-checkconf /etc/named.conf"  # noqa: command-instead-of-module
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Validate forward zone (named-checkzone)
+  ansible.builtin.command: "named-checkzone {{ dns_domain }} {{ dns_named_directory }}/{{ dns_forward_zone_file }}"  # noqa: command-instead-of-module
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Validate reverse zone (named-checkzone)
+  ansible.builtin.command: "named-checkzone {{ dns_reverse_zone }} {{ dns_named_directory }}/{{ dns_reverse_zone_file }}"  # noqa: command-instead-of-module
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: SELinux note (Enforcing)
+  ansible.builtin.debug:
+    msg: >-
+      SELinux está Enforcing. Esta configuración usa rutas estándar (/etc/named.conf y /var/named),
+      por lo que no debería requerir ajustes extra. Si cambias rutas de zonas, revisa fcontext (semanage).
+  when:
+    - ansible_facts.selinux is defined
+    - ansible_facts.selinux.status == "enabled"
+    - ansible_facts.selinux.mode == "enforcing"
+
+- name: Ensure named is enabled and started
+  ansible.builtin.service:
+    name: named
+    state: started
+    enabled: true

@@ -1,0 +1,106 @@
+---
+- name: Install DHCP server package
+  ansible.builtin.package:
+    name: "{{ dhcpd_package }}"
+    state: present
+
+- name: Ensure leases directory exists
+  ansible.builtin.file:
+    path: /var/lib/dhcpd
+    state: directory
+    owner: dhcpd
+    group: dhcpd
+    mode: "0755"
+
+- name: Ensure leases file exists
+  ansible.builtin.file:
+    path: /var/lib/dhcpd/dhcpd.leases
+    state: touch
+    owner: dhcpd
+    group: dhcpd
+    mode: "0644"
+
+- name: Configure dhcpd.conf
+  ansible.builtin.template:
+    src: dhcpd.conf.j2
+    dest: /etc/dhcp/dhcpd.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart dhcpd
+
+- name: Configure DHCPDARGS (stable interface selection)
+  ansible.builtin.lineinfile:
+    path: /etc/sysconfig/dhcpd
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+    regexp: '^DHCPDARGS='
+    line: 'DHCPDARGS="{{ dhcpd_interfaces | join(" ") }}"'
+  when: dhcpd_interfaces is defined
+  notify: restart dhcpd
+
+- name: Validate dhcpd.conf (dhcpd -t)
+  ansible.builtin.command: "dhcpd -t -cf /etc/dhcp/dhcpd.conf"  # noqa: command-instead-of-module
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Optionally install firewalld
+  ansible.builtin.package:
+    name: firewalld
+    state: present
+  when:
+    - firewalld_manage | bool
+    - firewalld_install | bool
+
+- name: Re-gather package facts after optional install
+  ansible.builtin.package_facts:
+    manager: auto
+  when:
+    - firewalld_manage | bool
+
+- name: Set firewalld_present fact
+  ansible.builtin.set_fact:
+    firewalld_present: "{{ 'firewalld' in (ansible_facts.packages | default({})) }}"
+  when:
+    - firewalld_manage | bool
+
+- name: Ensure firewalld is enabled and running (if present)
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+  when:
+    - firewalld_manage | bool
+    - firewalld_present | default(false)
+
+- name: Open firewall port for DHCP (67/udp)
+  ansible.posix.firewalld:
+    port: "67/udp"
+    permanent: true
+    immediate: true
+    state: enabled
+  when:
+    - firewalld_manage | bool
+    - firewalld_present | default(false)
+
+- name: SELinux note (Enforcing)
+  ansible.builtin.debug:
+    msg: >-
+      SELinux está Enforcing. dhcpd en ruta estándar normalmente funciona sin cambios.
+      Si usas interfaces/bridges no estándar o políticas custom, revisa audit.log.
+  when:
+    - ansible_facts.selinux is defined
+    - ansible_facts.selinux.status == "enabled"
+    - ansible_facts.selinux.mode == "enforcing"
+
+- name: Ensure dhcpd is enabled and started
+  ansible.builtin.service:
+    name: dhcpd
+    state: started
+    enabled: true

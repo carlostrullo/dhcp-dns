@@ -1,0 +1,18 @@
+$TTL {{ dns_zone_ttl }}
+@   IN SOA {{ dns_ns_fqdn }}. {{ (dns_admin_email | replace('@', '.')) }}. (
+        {{ dns_zone_serial }} ; serial (YYYYMMDDnn)
+        {{ dns_refresh }}     ; refresh
+        {{ dns_retry }}       ; retry
+        {{ dns_expire }}      ; expire
+        {{ dns_minimum }}     ; minimum
+)
+
+    IN NS  {{ dns_ns_fqdn }}.
+
+; Server A record (authoritative DNS/DHCP server)
+{{ dns_server_hostname }}  IN A   {{ dns_server_ip }}
+
+; Additional A records
+{% for rec in dns_a_records %}
+{{ rec.name }}  IN A   {{ rec.ip }}
+{% endfor %}

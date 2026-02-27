@@ -1,0 +1,26 @@
+---
+dhcpd_package: dhcp-server
+
+dhcp_domain_name: "carredondot.local"
+dhcp_dns_servers:
+  - "192.168.56.254"
+
+dhcp_default_lease_time: 3600
+dhcp_max_lease_time: 7200
+
+# Interfaz(es) (RHEL/Rocky: /etc/sysconfig/dhcpd -> DHCPDARGS)
+dhcpd_interfaces:
+  - "eth1"
+
+dhcp_subnets:
+  - network: "192.168.56.0"
+    netmask: "255.255.255.0"
+    range_start: "192.168.56.100"
+    range_end: "192.168.56.110"
+    routers: "192.168.56.1"
+    broadcast: "192.168.56.255"
+
+dhcp_reservations: []
+
+firewalld_manage: true
+firewalld_install: true
