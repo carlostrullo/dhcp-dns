@@ -63,7 +63,7 @@ dhcp_max_lease_time: 7200
 # Interfaz(es) donde escuchará dhcpd (RHEL/Rocky: /etc/sysconfig/dhcpd -> DHCPDARGS)
 # Tú: eth1 (altname enp0s8). Si en tu host realmente se llama enp0s8, cámbialo aquí.
 dhcpd_interfaces:
-  - "eth1"
+  - "eth2"
 
 dhcp_subnets:
   - network: "192.168.56.0"
